@@ -1,7 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --mouse-x: 0;
+            --mouse-y: 0;
+        }
+
+        div {
+            width: 100px;
+            height: 100px;
+            background-color: blue;
+            position: absolute;
+            top: var(--mouse-y);
+            left: var(--mouse-x);
+            transition: top 0.2s, left 0.2s;
+        }
+    </style>
+</head>
 <body>
-<h1>Hello World</h1>
-<p>I'm hosted with GitHub Pages.</p>
+    <div></div>
+
+    <script>
+        document.addEventListener('mousemove', (e) => {
+            document.documentElement.style.setProperty('--mouse-x', e.clientX + 'px');
+            document.documentElement.style.setProperty('--mouse-y', e.clientY + 'px');
+        });
+    </script>
 </body>
 </html>
