@@ -3,31 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        :root {
-            --mouse-x: 0;
-            --mouse-y: 0;
-        }
-
-        div {
-            width: 100px;
-            height: 100px;
-            background-color: blue;
-            position: absolute;
-            top: var(--mouse-y);
-            left: var(--mouse-x);
-            transition: top 0.2s, left 0.2s;
-        }
-    </style>
+    <title>My Projects</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div></div>
-
-    <script>
-        document.addEventListener('mousemove', (e) => {
-            document.documentElement.style.setProperty('--mouse-x', e.clientX + 'px');
-            document.documentElement.style.setProperty('--mouse-y', e.clientY + 'px');
-        });
-    </script>
+    <header>
+        <div class="container">
+            <h1>My Projects</h1>
+            <p>Welcome to my portfolio! Here are some of the projects I’ve worked on.</p>
+        </div>
+    </header>
+    <main class="container">
+        <section class="projects-grid">
+            <!-- Project 1 -->
+            <div class="project-card">
+                <h2>Project Title 1</h2>
+                <p>A brief description of Project 1. Highlight its purpose, features, or technologies used.</p>
+                <a href="https://example.com" target="_blank">View Project</a>
+            </div>
+            <!-- Project 2 -->
+            <div class="project-card">
+                <h2>Project Title 2</h2>
+                <p>A brief description of Project 2. Include key points that make it interesting.</p>
+                <a href="https://example.com" target="_blank">View Project</a>
+            </div>
+            <!-- Add more projects as needed -->
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2025 Your Name. All rights reserved.</p>
+    </footer>
 </body>
 </html>
