@@ -43,6 +43,14 @@ header .container {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     padding: 20px;
     text-align: center;
+    overflow: hidden;
+}
+
+.project-card img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 15px;
 }
 
 .project-card h2 {
