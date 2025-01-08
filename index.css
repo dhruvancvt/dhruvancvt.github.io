@@ -1,0 +1,10 @@
+body {
+    background-color: lightblue;
+}
+
+rect {
+    width: --mouse-x;
+    height: --mouse-y;
+    top: 0;
+    left: 0;
+}
