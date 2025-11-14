@@ -3,17 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dhruva Navin Chander - Portfolio</title>
+    <title>Dhruva Navin Chander - Computer Science Student & Developer</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Portfolio of Dhruva Navin Chander - Computer Science Student specializing in AI, Cybersecurity, and Embedded Systems. Currently working at Dynpro on AI-powered data accessibility solutions.">
+    <meta name="keywords" content="Dhruva Navin Chander, Computer Science, AI, Machine Learning, Cybersecurity, Embedded Systems, Developer, Portfolio">
+    <meta name="author" content="Dhruva Navin Chander">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Social Media Meta Tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dhruvancvt.github.io/">
+    <meta property="og:title" content="Dhruva Navin Chander - Computer Science Student & Developer">
+    <meta property="og:description" content="Passionate about cybersecurity, machine learning, and embedded systems. Building innovative solutions that make a difference.">
+    <meta property="og:image" content="https://dhruvancvt.github.io/og-image.jpg">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@dhruvancvt">
+    <meta name="twitter:title" content="Dhruva Navin Chander - Computer Science Student & Developer">
+    <meta name="twitter:description" content="Passionate about cybersecurity, machine learning, and embedded systems. Building innovative solutions that make a difference.">
+    <meta name="twitter:image" content="https://dhruvancvt.github.io/og-image.jpg">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png">
+
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="fontawesome.css">
     <link rel="stylesheet" href="inter-font.css">
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar">
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
         <div class="nav-container">
             <div class="nav-logo">
-                <a href="#home">Dhruva NC</a>
+                <a href="#home" aria-label="Home - Dhruva NC">Dhruva NC</a>
             </div>
             <ul class="nav-menu">
                 <li class="nav-item">
@@ -35,11 +59,14 @@
                     <a href="#contact" class="nav-link">Contact</a>
                 </li>
             </ul>
-            <div class="hamburger">
+            <button class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+                <i class="fas fa-moon"></i>
+            </button>
+            <button class="hamburger" aria-label="Toggle mobile menu" aria-expanded="false">
                 <span class="bar"></span>
                 <span class="bar"></span>
                 <span class="bar"></span>
-            </div>
+            </button>
         </div>
     </nav>
 
@@ -288,6 +315,10 @@
                     <p>I'm always interested in new opportunities and collaborations. Feel free to reach out for discussions about AI, cybersecurity, or any tech-related topics!</p>
                     <div class="contact-items">
                         <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <a href="mailto:contact@dhruvancvt.com" class="contact-link">contact@dhruvancvt.com</a>
+                        </div>
+                        <div class="contact-item">
                             <i class="fas fa-building"></i>
                             <span>Currently at Dynpro</span>
                         </div>
@@ -325,6 +356,11 @@
             <p>&copy; 2025 Dhruva Navin Chander. All rights reserved.</p>
         </div>
     </footer>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-to-top" aria-label="Scroll to top" title="Scroll to top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
 
     <script src="script.js"></script>
 </body>

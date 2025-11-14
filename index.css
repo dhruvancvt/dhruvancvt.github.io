@@ -900,3 +900,251 @@ body {
         scroll-behavior: smooth;
     }
 }
+
+/* Theme Toggle Button */
+.theme-toggle {
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    margin-left: 1rem;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-toggle:hover {
+    background: #f1f5f9;
+    transform: scale(1.1);
+}
+
+.theme-toggle:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Scroll to Top Button */
+.scroll-to-top {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 999;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.scroll-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.scroll-to-top:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.scroll-to-top:focus {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* Contact Link */
+.contact-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.contact-link:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+
+body.dark-mode .navbar {
+    background: rgba(15, 23, 42, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .nav-link {
+    color: #e2e8f0;
+}
+
+body.dark-mode .nav-link:hover {
+    color: #60a5fa;
+}
+
+body.dark-mode .nav-logo a {
+    color: #60a5fa;
+}
+
+body.dark-mode .theme-toggle {
+    color: #e2e8f0;
+}
+
+body.dark-mode .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .about {
+    background: #1e293b;
+}
+
+body.dark-mode .about-text p {
+    color: #cbd5e1;
+}
+
+body.dark-mode .section-title {
+    color: #e2e8f0;
+}
+
+body.dark-mode .stat {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .stat h3 {
+    color: #60a5fa;
+}
+
+body.dark-mode .stat p {
+    color: #cbd5e1;
+}
+
+body.dark-mode .skills {
+    background: #0f172a;
+}
+
+body.dark-mode .skill-category {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .skill-category h3 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .projects {
+    background: #1e293b;
+}
+
+body.dark-mode .project-card {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .project-card h3 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .project-card p {
+    color: #cbd5e1;
+}
+
+body.dark-mode .contact {
+    background: #0f172a;
+}
+
+body.dark-mode .contact-info h3,
+body.dark-mode .social-links h3 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .contact-info p {
+    color: #cbd5e1;
+}
+
+body.dark-mode .contact-item {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .contact-item:hover {
+    background: #334155;
+}
+
+body.dark-mode .contact-item i {
+    color: #60a5fa;
+}
+
+body.dark-mode .contact-link {
+    color: #60a5fa;
+}
+
+body.dark-mode .contact-link:hover {
+    color: #93c5fd;
+}
+
+body.dark-mode .tag {
+    background: #334155;
+    color: #cbd5e1;
+}
+
+/* Better hamburger animation */
+.hamburger {
+    border: none;
+    background: none;
+    padding: 0.5rem;
+}
+
+.hamburger.active .bar:nth-child(1) {
+    transform: translateY(9px) rotate(45deg);
+}
+
+.hamburger.active .bar:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active .bar:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+}
+
+/* Focus visible for better accessibility */
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+body.dark-mode a:focus-visible,
+body.dark-mode button:focus-visible {
+    outline-color: #60a5fa;
+}
+
+/* Responsive adjustments for new elements */
+@media (max-width: 768px) {
+    .theme-toggle {
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+    }
+
+    .scroll-to-top {
+        bottom: 20px;
+        right: 20px;
+        width: 45px;
+        height: 45px;
+    }
+}
