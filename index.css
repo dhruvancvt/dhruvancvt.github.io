@@ -15,6 +15,64 @@ body {
     color: #ffffff;
     line-height: 1.6;
     overflow-x: hidden;
+    position: relative;
+}
+
+/* Animated Background */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        linear-gradient(rgba(0, 102, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 102, 255, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+    animation: backgroundScroll 20s linear infinite;
+}
+
+@keyframes backgroundScroll {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(50px); }
+}
+
+/* CVE Background Animation */
+body::after {
+    content: 'CVE-2024-1234 CRITICAL CVE-2023-5678 HIGH CVE-2024-9012 MEDIUM buffer-overflow SQL-injection XSS remote-code-execution privilege-escalation CVE-2023-3456 denial-of-service zero-day exploit authentication-bypass CVE-2024-7890 use-after-free CVE-2023-2345 memory-corruption CVSS:9.8 path-traversal CVE-2024-6789 information-disclosure CVE-2023-8901 heap-overflow stack-overflow race-condition CVE-2024-4567 command-injection CVE-2023-6543 cross-site-scripting CVE-2024-3210 deserialization CVE-2023-9876 arbitrary-file-read CVE-2024-5432 security-misconfiguration CVE-2023-7654 cryptographic-failure CVE-2024-8765 broken-authentication CVE-2023-4321 sensitive-data-exposure CVE-2024-2109 XML-external-entities CVE-2023-5432 broken-access-control CVE-2024-6543 security-logging-failure CVE-2023-1098 server-side-request-forgery';
+    position: fixed;
+    top: -100%;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 200%;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 2.5;
+    color: rgba(0, 102, 255, 0.06);
+    word-wrap: break-word;
+    pointer-events: none;
+    z-index: 0;
+    animation: codeRain 50s linear infinite;
+    overflow: hidden;
+    white-space: pre-wrap;
+}
+
+@keyframes codeRain {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(50%); }
+}
+
+/* Ensure content is above background */
+.navbar,
+.hero,
+.section,
+.footer {
+    position: relative;
+    z-index: 1;
 }
 
 .container {
@@ -323,11 +381,18 @@ body {
     align-items: center;
     justify-content: center;
     margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.skill-card:hover .skill-icon {
+    background: rgba(0, 102, 255, 0.2);
+    box-shadow: 0 0 20px rgba(0, 102, 255, 0.4);
 }
 
 .skill-icon i {
     font-size: 1.5rem;
     color: #0066ff;
+    filter: drop-shadow(0 0 3px rgba(0, 102, 255, 0.5));
 }
 
 .skill-card h3 {
@@ -385,6 +450,13 @@ body {
 .project-header i {
     font-size: 1.5rem;
     color: #0066ff;
+    filter: drop-shadow(0 0 3px rgba(0, 102, 255, 0.5));
+    transition: all 0.3s ease;
+}
+
+.project-card:hover .project-header i {
+    filter: drop-shadow(0 0 8px rgba(0, 102, 255, 0.8));
+    transform: scale(1.1);
 }
 
 .project-header h3 {
@@ -472,6 +544,12 @@ body {
 .contact-item i {
     color: #0066ff;
     font-size: 1.25rem;
+    filter: drop-shadow(0 0 3px rgba(0, 102, 255, 0.5));
+    transition: all 0.3s ease;
+}
+
+.contact-item:hover i {
+    filter: drop-shadow(0 0 8px rgba(0, 102, 255, 0.8));
 }
 
 .social-links {
@@ -495,10 +573,20 @@ body {
     transition: all 0.3s ease;
 }
 
+.social-links a i {
+    filter: drop-shadow(0 0 3px rgba(0, 102, 255, 0.5));
+    transition: all 0.3s ease;
+}
+
 .social-links a:hover {
     background: #0066ff;
     color: #ffffff;
     transform: translateY(-3px);
+    box-shadow: 0 0 20px rgba(0, 102, 255, 0.6);
+}
+
+.social-links a:hover i {
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
 }
 
 /* ===== FOOTER ===== */
@@ -534,6 +622,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 20px rgba(0, 102, 255, 0.4);
+}
+
+.scroll-top i {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.5));
 }
 
 .scroll-top.visible {
@@ -544,6 +637,11 @@ body {
 .scroll-top:hover {
     background: #0052cc;
     transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0, 102, 255, 0.6);
+}
+
+.scroll-top:hover i {
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9));
 }
 
 /* ===== RESPONSIVE ===== */
