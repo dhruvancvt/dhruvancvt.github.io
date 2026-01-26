@@ -42,23 +42,24 @@ body::before {
 
 /* CVE Background Animation */
 body::after {
-    content: 'CVE-2024-1234 CRITICAL CVE-2023-5678 HIGH CVE-2024-9012 MEDIUM buffer-overflow SQL-injection XSS remote-code-execution privilege-escalation CVE-2023-3456 denial-of-service zero-day exploit authentication-bypass CVE-2024-7890 use-after-free CVE-2023-2345 memory-corruption CVSS:9.8 path-traversal CVE-2024-6789 information-disclosure CVE-2023-8901 heap-overflow stack-overflow race-condition CVE-2024-4567 command-injection CVE-2023-6543 cross-site-scripting CVE-2024-3210 deserialization CVE-2023-9876 arbitrary-file-read CVE-2024-5432 security-misconfiguration CVE-2023-7654 cryptographic-failure CVE-2024-8765 broken-authentication CVE-2023-4321 sensitive-data-exposure CVE-2024-2109 XML-external-entities CVE-2023-5432 broken-access-control CVE-2024-6543 security-logging-failure CVE-2023-1098 server-side-request-forgery';
+    content: 'CVE-2024-1234 CRITICAL CVE-2023-5678 HIGH CVE-2024-9012 MEDIUM buffer-overflow SQL-injection XSS remote-code-execution privilege-escalation CVE-2023-3456 denial-of-service zero-day exploit authentication-bypass CVE-2024-7890 use-after-free CVE-2023-2345 memory-corruption CVSS:9.8 path-traversal CVE-2024-6789 information-disclosure CVE-2023-8901 heap-overflow stack-overflow race-condition CVE-2024-4567 command-injection CVE-2023-6543 cross-site-scripting CVE-2024-3210 deserialization CVE-2023-9876 arbitrary-file-read CVE-2024-5432 security-misconfiguration CVE-2023-7654 cryptographic-failure CVE-2024-8765 broken-authentication CVE-2023-4321 sensitive-data-exposure CVE-2024-2109 XML-external-entities CVE-2023-5432 broken-access-control CVE-2024-6543 security-logging-failure CVE-2023-1098 server-side-request-forgery CVE-2024-3333 integer-overflow CVE-2023-7777 format-string CVE-2024-8888 directory-traversal CVE-2023-9999 insecure-deserialization';
     position: fixed;
-    top: -100%;
+    top: -50%;
     left: 0;
     right: 0;
     width: 100%;
     height: 200%;
     font-family: 'Courier New', monospace;
-    font-size: 13px;
-    line-height: 2.5;
-    color: rgba(0, 102, 255, 0.06);
+    font-size: 14px;
+    line-height: 3;
+    color: rgba(0, 102, 255, 0.12);
     word-wrap: break-word;
     pointer-events: none;
     z-index: 0;
-    animation: codeRain 50s linear infinite;
+    animation: codeRain 60s linear infinite;
     overflow: hidden;
     white-space: pre-wrap;
+    padding: 2rem;
 }
 
 @keyframes codeRain {
