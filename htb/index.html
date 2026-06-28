@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTB Writeups — Dhruva Navin Chander</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/inter-font.css">
+    <link rel="stylesheet" href="/fontawesome.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Nav -->
+    <nav class="nav">
+        <a href="/" class="nav-back"><i class="fas fa-arrow-left"></i> Back</a>
+        <span class="nav-title">HTB Writeups</span>
+        <button class="nav-lock" id="lockBtn" title="Lock" style="display:none">
+            <i class="fas fa-lock"></i>
+        </button>
+    </nav>
+
+    <!-- Password Gate -->
+    <div class="gate" id="gate">
+        <div class="gate-inner">
+            <div class="gate-icon"><i class="fas fa-terminal"></i></div>
+            <h1 class="gate-heading">Writeups</h1>
+            <p class="gate-sub">These writeups are password protected.</p>
+            <form class="gate-form" id="gateForm" autocomplete="off">
+                <div class="input-wrap">
+                    <input
+                        type="password"
+                        id="passInput"
+                        class="pass-input"
+                        placeholder="Password"
+                        autofocus
+                        spellcheck="false"
+                    >
+                    <button type="submit" class="pass-btn">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <p class="gate-error" id="gateError"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Writeups Content -->
+    <div class="content" id="content" style="display:none">
+
+        <section class="hero-strip">
+            <p class="hero-label">HackTheBox</p>
+            <h1 class="hero-heading">Writeups</h1>
+            <p class="hero-sub">Personal notes and walkthroughs for retired machines and challenges.</p>
+        </section>
+
+        <section class="writeups-section">
+            <div class="writeups-inner">
+
+                <!-- Filter tabs -->
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="machine">Machines</button>
+                    <button class="filter-btn" data-filter="challenge">Challenges</button>
+                    <button class="filter-btn" data-filter="easy">Easy</button>
+                    <button class="filter-btn" data-filter="medium">Medium</button>
+                    <button class="filter-btn" data-filter="hard">Hard</button>
+                </div>
+
+                <!-- Writeup list -->
+                <div class="writeup-list" id="writeupList">
+
+                    <!-- Add your writeups here. Copy a .writeup-row block and fill in the details. -->
+                    <!-- Example entries are below — replace or delete them. -->
+
+                    <a href="writeups/nimbus.html" class="writeup-row" data-tags="machine hard">
+                        <div class="wr-left">
+                            <span class="wr-index">01</span>
+                            <div>
+                                <h3>Nimbus</h3>
+                                <div class="wr-meta">
+                                    <span class="wr-tag machine">Machine</span>
+                                    <span class="wr-tag hard">Hard</span>
+                                    <span class="wr-os"><i class="fab fa-linux"></i> Linux</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="wr-right">
+                            <span class="wr-desc">SSRF → IMDS cred theft → SQS/yaml.load RCE → privileged CodeBuild → core_pattern container escape.</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </a>
+
+                    <!-- Empty state — shown when no writeups exist -->
+                    <div class="empty-state" id="emptyState" style="display:none">
+                        <i class="fas fa-file-alt"></i>
+                        <p>No writeups yet.</p>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

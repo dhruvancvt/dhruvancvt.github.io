@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Example Machine — HTB Writeup</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/inter-font.css">
+    <link rel="stylesheet" href="/fontawesome.css">
+    <link rel="stylesheet" href="writeup.css">
+</head>
+<body>
+
+    <nav class="nav">
+        <a href="/htb/" class="nav-back"><i class="fas fa-arrow-left"></i> Writeups</a>
+        <span class="nav-title">Example Machine</span>
+        <span></span>
+    </nav>
+
+    <div class="writeup-page" id="page" style="display:none">
+
+        <header class="writeup-header">
+            <div class="wh-meta">
+                <span class="wr-tag machine">Machine</span>
+                <span class="wr-tag medium">Medium</span>
+                <span class="wr-os"><i class="fab fa-linux"></i> Linux</span>
+                <span class="wh-date">Jan 2025</span>
+            </div>
+            <h1 class="wh-title">Example Machine</h1>
+            <p class="wh-summary">A brief summary of what this machine covers and the main attack path.</p>
+        </header>
+
+        <article class="writeup-body">
+
+            <section class="wb-section">
+                <h2>Enumeration</h2>
+                <p>Start with an nmap scan:</p>
+                <pre><code>nmap -sCV -p- --min-rate 5000 10.10.11.xxx</code></pre>
+                <p>Open ports: 22 (SSH), 80 (HTTP).</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>Foothold</h2>
+                <p>Describe how you got initial access here.</p>
+                <pre><code># Example command
+curl -s http://target.htb/vuln?cmd=id</code></pre>
+            </section>
+
+            <section class="wb-section">
+                <h2>Privilege Escalation</h2>
+                <p>Describe the privesc path here.</p>
+                <pre><code>sudo -l
+# (ALL) NOPASSWD: /usr/bin/vim
+sudo vim -c ':!/bin/bash'</code></pre>
+            </section>
+
+            <section class="wb-section">
+                <h2>Flags</h2>
+                <div class="flag-grid">
+                    <div class="flag-item">
+                        <span class="flag-label">User</span>
+                        <code class="flag-val">user.txt obtained ✓</code>
+                    </div>
+                    <div class="flag-item">
+                        <span class="flag-label">Root</span>
+                        <code class="flag-val">root.txt obtained ✓</code>
+                    </div>
+                </div>
+            </section>
+
+        </article>
+
+    </div>
+
+    <!-- Auth check: redirect if not authenticated -->
+    <script>
+    const SESSION_KEY = 'htb_auth';
+    if (!sessionStorage.getItem(SESSION_KEY)) {
+        window.location.href = '/htb/';
+    } else {
+        document.getElementById('page').style.display = 'block';
+    }
+    </script>
+
+</body>
+</html>
