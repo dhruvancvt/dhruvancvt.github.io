@@ -1,0 +1,178 @@
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --black: #0a0a0a;
+    --white: #f5f5f3;
+    --gray: #888;
+    --border: #e0e0e0;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+}
+
+body {
+    font-family: var(--font);
+    background: var(--white);
+    color: var(--black);
+    line-height: 1.6;
+}
+
+.nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 3rem;
+    background: rgba(245, 245, 243, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+}
+
+.nav-back {
+    font-size: 0.85rem;
+    color: var(--gray);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s;
+}
+
+.nav-back:hover { color: var(--black); }
+
+.nav-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.writeup-page {
+    padding-top: 65px;
+    max-width: 780px;
+    margin: 0 auto;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+.writeup-header {
+    padding: 4rem 0 3rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+}
+
+.wh-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+
+.wr-tag {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border: 1px solid;
+}
+
+.wr-tag.machine  { border-color: #bbb; color: #555; }
+.wr-tag.challenge { border-color: #bbb; color: #555; }
+.wr-tag.easy     { border-color: #4ade80; color: #16a34a; }
+.wr-tag.medium   { border-color: #fbbf24; color: #d97706; }
+.wr-tag.hard     { border-color: #f87171; color: #dc2626; }
+.wr-tag.insane   { border-color: #c084fc; color: #9333ea; }
+
+.wr-os {
+    font-size: 0.75rem;
+    color: var(--gray);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.wh-date { font-size: 0.75rem; color: var(--gray); margin-left: auto; }
+
+.wh-title {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    margin-bottom: 1rem;
+}
+
+.wh-summary { font-size: 1rem; color: #555; line-height: 1.7; max-width: 580px; }
+
+.writeup-body { padding-bottom: 6rem; }
+
+.wb-section { margin-bottom: 3rem; }
+
+.wb-section h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.wb-section h3 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+
+.wb-section p { font-size: 0.95rem; color: #444; line-height: 1.8; margin-bottom: 1rem; }
+
+.wb-section ul, .wb-section ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+
+.wb-section li { font-size: 0.95rem; color: #444; line-height: 1.8; margin-bottom: 0.25rem; }
+
+pre {
+    background: var(--black);
+    color: #e5e5e5;
+    padding: 1.25rem 1.5rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+code {
+    font-family: var(--mono);
+    font-size: 0.875em;
+    background: rgba(0,0,0,0.06);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+}
+
+pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+
+.flag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+
+.flag-item {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.flag-label {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 0.5rem;
+}
+
+.flag-val { font-size: 0.85rem; font-family: var(--mono); }
+
+@media (max-width: 600px) {
+    .nav { padding: 1.25rem 1.5rem; }
+    .writeup-page { padding-left: 1.5rem; padding-right: 1.5rem; }
+    .flag-grid { grid-template-columns: 1fr; }
+}
