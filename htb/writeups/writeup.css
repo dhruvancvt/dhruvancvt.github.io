@@ -218,6 +218,63 @@ pre code {
     font-family: var(--mono);
 }
 
+/* CHAIN TABLE */
+.chain-table {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+
+.chain-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 1rem;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+    align-items: baseline;
+}
+
+.chain-row:last-child { border-bottom: none; }
+
+.chain-stage {
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    color: var(--black);
+}
+
+.chain-desc { color: #444; line-height: 1.6; }
+
+/* MARKDOWN-STYLE TABLES */
+.wb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.wb-table th {
+    text-align: left;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.wb-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+    line-height: 1.5;
+    vertical-align: top;
+}
+
+.wb-table tr:last-child td { border-bottom: none; }
+
 @media (max-width: 600px) {
     .nav { padding: 1.25rem 1.5rem; }
     .writeup-page { padding-left: 1.5rem; padding-right: 1.5rem; }

